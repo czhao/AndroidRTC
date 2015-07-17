@@ -4,13 +4,46 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+
     <android.opengl.GLSurfaceView
         android:id="@+id/glview_call"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/init_call"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
     <android.view.SurfaceView
         android:id="@+id/preview"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/init_call"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:text="@string/call"
+        />
+
+    <EditText
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:id="@+id/session_id_input"
+        android:layout_toRightOf="@id/init_call"
+        android:layout_toEndOf="@+id/init_call"
+        android:layout_alignParentTop="true"
+        />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@+id/session_id_input"
+        android:layout_toRightOf="@+id/session_id_input"
+        android:id="@+id/answer_call"
+        android:text="@string/answer"
+        />
 
 </RelativeLayout>

@@ -5,10 +5,14 @@ import android.content.Intent;
 import android.graphics.Point;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager.LayoutParams;
+import android.widget.EditText;
 import android.widget.Toast;
 import org.json.JSONException;
+import org.w3c.dom.Text;
 import org.webrtc.MediaStream;
 import org.webrtc.VideoRenderer;
 import org.webrtc.VideoRendererGui;
@@ -42,7 +46,7 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
     private VideoRenderer.Callbacks remoteRender;
     private WebRtcClient client;
     private String mSocketAddress;
-    private String callerId;
+    private String callerId, calleeId;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -65,6 +69,30 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
             @Override
             public void run() {
                 init();
+            }
+        });
+
+        //set the onclick listener to initialize the call
+        findViewById(R.id.init_call).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //output the caller ID
+                Toast.makeText(RtcActivity.this,"Caller ID "+ calleeId, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        findViewById(R.id.answer_call).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //find the user input and answer the call
+                String callerId = ((EditText)findViewById(R.id.session_id_input)).getEditableText().toString();
+                if (!TextUtils.isEmpty(callerId)){
+                    try {
+                        answer(callerId);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
         });
 
@@ -130,6 +158,7 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
             }
         } else {
             call(callId);
+            calleeId = callId;
         }
     }
 
@@ -170,10 +199,11 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
     @Override
     public void onLocalStream(MediaStream localStream) {
         localStream.videoTracks.get(0).addRenderer(new VideoRenderer(localRender));
+
         VideoRendererGui.update(localRender,
                 LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
                 LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING,
-                scalingType);
+                scalingType, false);
     }
 
     @Override
@@ -181,11 +211,12 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
         remoteStream.videoTracks.get(0).addRenderer(new VideoRenderer(remoteRender));
         VideoRendererGui.update(remoteRender,
                 REMOTE_X, REMOTE_Y,
-                REMOTE_WIDTH, REMOTE_HEIGHT, scalingType);
+                REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
+
         VideoRendererGui.update(localRender,
                 LOCAL_X_CONNECTED, LOCAL_Y_CONNECTED,
                 LOCAL_WIDTH_CONNECTED, LOCAL_HEIGHT_CONNECTED,
-                scalingType);
+                scalingType, false);
     }
 
     @Override
@@ -193,6 +224,6 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
         VideoRendererGui.update(localRender,
                 LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
                 LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING,
-                scalingType);
+                scalingType, false);
     }
 }
