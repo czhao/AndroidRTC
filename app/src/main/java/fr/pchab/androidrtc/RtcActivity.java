@@ -3,13 +3,19 @@ package fr.pchab.androidrtc;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Point;
+import android.nfc.NdefMessage;
+import android.nfc.NdefRecord;
+import android.nfc.NfcAdapter;
+import android.nfc.NfcEvent;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager.LayoutParams;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 import org.json.JSONException;
 import org.w3c.dom.Text;
@@ -21,7 +27,7 @@ import fr.pchab.webrtcclient.PeerConnectionParameters;
 
 import java.util.List;
 
-public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
+public class RtcActivity extends Activity implements WebRtcClient.RtcListener,NfcAdapter.CreateNdefMessageCallback {
     private final static int VIDEO_CALL_SENT = 666;
     private static final String VIDEO_CODEC_VP9 = "VP9";
     private static final String AUDIO_CODEC_OPUS = "opus";
@@ -47,6 +53,8 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
     private WebRtcClient client;
     private String mSocketAddress;
     private String callerId, calleeId;
+
+    private NfcAdapter mNfcAdapter;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -111,6 +119,15 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
             final List<String> segments = intent.getData().getPathSegments();
             callerId = segments.get(0);
         }
+
+        mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
+        if (mNfcAdapter == null) {
+            Toast.makeText(this, "NFC is not available", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+        // Register callback
+        mNfcAdapter.setNdefPushMessageCallback(this, this);
     }
 
     private void init() {
@@ -132,11 +149,59 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
     }
 
     @Override
+    public NdefMessage createNdefMessage(NfcEvent nfcEvent) {
+        if (TextUtils.isEmpty(calleeId))
+            return null;
+
+        //create the message
+        NdefMessage msg = new NdefMessage(
+                new NdefRecord[] { NdefRecord.createMime(
+                        "text/plain", calleeId.getBytes())});
+        return msg;
+    }
+
+    @Override
+    public void onNewIntent(Intent intent) {
+        // onResume gets called after this to handle the intent
+        setIntent(intent);
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
         vsv.onResume();
+
+        if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(getIntent().getAction())) {
+
+            findViewById(R.id.init_call).postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    processIntent(getIntent());
+                }
+            }, 1000);
+        }
+
         if(client != null) {
             client.onResume();
+        }
+    }
+
+    /**
+     * Parses the NDEF Message from the intent and prints to the TextView
+     */
+    void processIntent(Intent intent) {
+        Parcelable[] rawMsgs = intent.getParcelableArrayExtra(
+                NfcAdapter.EXTRA_NDEF_MESSAGES);
+        // only one message sent during the beam
+        NdefMessage msg = (NdefMessage) rawMsgs[0];
+        // record 0 contains the MIME type, record 1 is the AAR, if present
+        String incomingCalleeId = new String(msg.getRecords()[0].getPayload());
+        Toast.makeText(this, incomingCalleeId, Toast.LENGTH_SHORT).show();
+
+        try {
+            answer(incomingCalleeId);
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
     }
 
