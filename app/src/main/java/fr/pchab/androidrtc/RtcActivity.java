@@ -55,6 +55,7 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
     private String callerId, calleeId;
 
     private NfcAdapter mNfcAdapter;
+    private final boolean VIDEO_ENABLED = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -134,8 +135,7 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
         Point displaySize = new Point();
         getWindowManager().getDefaultDisplay().getSize(displaySize);
         PeerConnectionParameters params = new PeerConnectionParameters(
-                true, false, displaySize.x, displaySize.y, 30, 1, VIDEO_CODEC_VP9, true, 1, AUDIO_CODEC_OPUS, true);
-
+                VIDEO_ENABLED, false, displaySize.x, displaySize.y, 30, 1, VIDEO_CODEC_VP9, true, 1, AUDIO_CODEC_OPUS, true);
         client = new WebRtcClient(this, mSocketAddress, params, VideoRendererGui.getEGLContext());
     }
 
@@ -171,18 +171,20 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
         super.onResume();
         vsv.onResume();
 
+        if(client != null) {
+            client.onResume();
+        }
+
         if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(getIntent().getAction())) {
 
             findViewById(R.id.init_call).postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    processIntent(getIntent());
+                    if (client != null) {
+                        processIntent(getIntent());
+                    }
                 }
-            }, 1000);
-        }
-
-        if(client != null) {
-            client.onResume();
+            }, 2000);
         }
     }
 
@@ -222,7 +224,7 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
                 e.printStackTrace();
             }
         } else {
-            call(callId);
+            //call(callId);
             calleeId = callId;
         }
     }
@@ -232,7 +234,7 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
         startCam();
     }
 
-    public void call(String callId) {
+   /* public void call(String callId) {
         Intent msg = new Intent(Intent.ACTION_SEND);
         msg.putExtra(Intent.EXTRA_TEXT, mSocketAddress + callId);
         msg.setType("text/plain");
@@ -244,7 +246,7 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
         if (requestCode == VIDEO_CALL_SENT) {
             startCam();
         }
-    }
+    }*/
 
     public void startCam() {
         // Camera settings
@@ -263,6 +265,10 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
 
     @Override
     public void onLocalStream(MediaStream localStream) {
+        if (!VIDEO_ENABLED){
+            return;
+        }
+
         localStream.videoTracks.get(0).addRenderer(new VideoRenderer(localRender));
 
         VideoRendererGui.update(localRender,
@@ -273,6 +279,9 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
 
     @Override
     public void onAddRemoteStream(MediaStream remoteStream, int endPoint) {
+        if (!VIDEO_ENABLED){
+            return;
+        }
         remoteStream.videoTracks.get(0).addRenderer(new VideoRenderer(remoteRender));
         VideoRendererGui.update(remoteRender,
                 REMOTE_X, REMOTE_Y,
@@ -286,6 +295,9 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
 
     @Override
     public void onRemoveRemoteStream(int endPoint) {
+        if (!VIDEO_ENABLED){
+            return;
+        }
         VideoRendererGui.update(localRender,
                 LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
                 LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING,
