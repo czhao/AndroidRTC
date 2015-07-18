@@ -17,6 +17,7 @@ import org.json.JSONException;
 import org.webrtc.MediaStream;
 import org.webrtc.VideoRendererGui;
 
+import fr.pchab.webrtcclient.AppRTCAudioManager;
 import fr.pchab.webrtcclient.PeerConnectionParameters;
 import fr.pchab.webrtcclient.WebRtcClient;
 
@@ -34,18 +35,19 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     protected final static String TASK_INIT = "task.init";
     private NfcAdapter mNfcAdapter;
 
+    private AppRTCAudioManager audioManager;
+
     public static final int REQUEST_CODE = 100;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(
-                LayoutParams.FLAG_FULLSCREEN
-                        | LayoutParams.FLAG_KEEP_SCREEN_ON
+                LayoutParams.FLAG_KEEP_SCREEN_ON
                         | LayoutParams.FLAG_DISMISS_KEYGUARD
                         | LayoutParams.FLAG_SHOW_WHEN_LOCKED
                         | LayoutParams.FLAG_TURN_SCREEN_ON);
+
         setContentView(R.layout.audio);
         mSocketAddress = "http://" + getResources().getString(R.string.host);
         mSocketAddress += (":" + getResources().getString(R.string.port) + "/");
@@ -70,8 +72,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
             public void onClick(View view) {
                 //output the caller ID
                 Toast.makeText(RtcAudioActivity.this,"Session End "+ mSessionId, Toast.LENGTH_SHORT).show();
-                client.onDestroy();
-                client = null;
+                disconnect();
                 finish();
             }
         });
@@ -84,12 +85,24 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
                 e.printStackTrace();
             }
         }
+
+
     }
 
     private void init() {
         PeerConnectionParameters parameters = new PeerConnectionParameters(false, false, 0, 0, 30, 1, VIDEO_CODEC_VP9, false, 1, AUDIO_CODEC_OPUS, true);
         client = new WebRtcClient(this, mSocketAddress, parameters, VideoRendererGui.getEGLContext());
         client.start("android_test");
+        //configure the audio manager
+        audioManager = AppRTCAudioManager.create(this, new Runnable() {
+                    @Override
+                    public void run() {
+                        onAudioManageStatusChanged();
+
+                    }
+                }
+        );
+        audioManager.init();
     }
 
     @TargetApi(16)
@@ -129,9 +142,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
 
     @Override
     public void onDestroy() {
-        if(client != null) {
-            client.onDestroy();
-        }
+        disconnect();
         super.onDestroy();
     }
 
@@ -142,9 +153,21 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(getApplicationContext(), "Session Initialized "+mSessionId, Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(), "Session Initialized " + mSessionId, Toast.LENGTH_LONG).show();
                 }
             });
+        }
+    }
+
+    private void disconnect(){
+        if (audioManager != null){
+            audioManager.close();
+            audioManager = null;
+        }
+
+        if (client != null) {
+            client.onDestroy();
+            client = null;
         }
     }
 
@@ -159,7 +182,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
             @Override
             public void run() {
                 int resId = R.string.unknown;
-                switch (newStatus){
+                switch (newStatus) {
                     case WebRtcClient.STATUS.CONNECTING:
                         resId = R.string.connecting;
                         break;
@@ -187,6 +210,10 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
 
     @Override
     public void onRemoveRemoteStream(int endPoint) {
+
+    }
+
+    private void onAudioManageStatusChanged(){
 
     }
 }
