@@ -22,13 +22,14 @@ android {
         abi {
             enable true
             reset()
-            include 'armeabi-v7a'
+            include 'armeabi-v7a','x86'
             universalApk false
         }
     }
 }
 
 dependencies {
-    compile 'com.android.support:appcompat-v7:22.0.0'
+    compile 'com.android.support:appcompat-v7:22.2.0'
+    compile 'com.jakewharton:butterknife:7.0.1'
     compile project(':webrtc-client')
 }

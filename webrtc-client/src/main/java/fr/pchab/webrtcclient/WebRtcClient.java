@@ -28,13 +28,20 @@ public class WebRtcClient {
     private RtcListener mListener;
     private Socket client;
 
+    public interface STATUS {
+        int NONE = 0;
+        int CONNECTING = 1;
+        int CONNECTED = 2;
+        int DISCONNECTED = 3;
+    }
+
     /**
      * Implement this interface to be notified of events.
      */
     public interface RtcListener{
         void onCallReady(String callId);
 
-        void onStatusChanged(String newStatus);
+        void onStatusChanged(int newStatus);
 
         void onLocalStream(MediaStream localStream);
 
@@ -195,7 +202,9 @@ public class WebRtcClient {
         public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
             if(iceConnectionState == PeerConnection.IceConnectionState.DISCONNECTED) {
                 removePeer(id);
-                mListener.onStatusChanged("DISCONNECTED");
+                mListener.onStatusChanged(STATUS.DISCONNECTED);
+            } else if (iceConnectionState == PeerConnection.IceConnectionState.CONNECTED){
+                mListener.onStatusChanged(STATUS.CONNECTED);
             }
         }
 
@@ -244,7 +253,7 @@ public class WebRtcClient {
 
             pc.addStream(localMS); //, new MediaConstraints()
 
-            mListener.onStatusChanged("CONNECTING");
+            mListener.onStatusChanged(STATUS.CONNECTING);
         }
     }
 
@@ -285,7 +294,9 @@ public class WebRtcClient {
         iceServers.add(new PeerConnection.IceServer("stun:stun.l.google.com:19302"));
 
         pcConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"));
-        pcConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"));
+        if (params.videoCallEnabled) {
+            pcConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"));
+        }
         pcConstraints.optional.add(new MediaConstraints.KeyValuePair("DtlsSrtpKeyAgreement", "true"));
     }
 
@@ -310,7 +321,9 @@ public class WebRtcClient {
         for (Peer peer : peers.values()) {
             peer.pc.dispose();
         }
-        videoSource.stop();
+        if (videoSource != null) {
+            videoSource.stop();
+        }
         factory.dispose();
         client.disconnect();
         client.close();

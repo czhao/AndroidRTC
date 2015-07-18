@@ -15,10 +15,8 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager.LayoutParams;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 import org.json.JSONException;
-import org.w3c.dom.Text;
 import org.webrtc.MediaStream;
 import org.webrtc.VideoRenderer;
 import org.webrtc.VideoRendererGui;
@@ -27,7 +25,7 @@ import fr.pchab.webrtcclient.PeerConnectionParameters;
 
 import java.util.List;
 
-public class RtcActivity extends Activity implements WebRtcClient.RtcListener,NfcAdapter.CreateNdefMessageCallback {
+public class RtcVideoActivity extends Activity implements WebRtcClient.RtcListener,NfcAdapter.CreateNdefMessageCallback {
     private final static int VIDEO_CALL_SENT = 666;
     private static final String VIDEO_CODEC_VP9 = "VP9";
     private static final String AUDIO_CODEC_OPUS = "opus";
@@ -55,7 +53,7 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
     private String callerId, calleeId;
 
     private NfcAdapter mNfcAdapter;
-    private final boolean VIDEO_ENABLED = false;
+    private final boolean VIDEO_ENABLED = true;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -86,7 +84,7 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
             @Override
             public void onClick(View view) {
                 //output the caller ID
-                Toast.makeText(RtcActivity.this,"Caller ID "+ calleeId, Toast.LENGTH_SHORT).show();
+                Toast.makeText(RtcVideoActivity.this,"Caller ID "+ calleeId, Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -254,11 +252,23 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener,Nf
     }
 
     @Override
-    public void onStatusChanged(final String newStatus) {
+    public void onStatusChanged(final int newStatus) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(getApplicationContext(), newStatus, Toast.LENGTH_SHORT).show();
+                int resId = R.string.unknown;
+                switch (newStatus){
+                    case WebRtcClient.STATUS.CONNECTING:
+                        resId = R.string.connecting;
+                        break;
+                    case WebRtcClient.STATUS.CONNECTED:
+                        resId = R.string.connected;
+                        break;
+                    case WebRtcClient.STATUS.DISCONNECTED:
+                        resId = R.string.disconnected;
+                        break;
+                }
+                Toast.makeText(getApplicationContext(), resId, Toast.LENGTH_SHORT).show();
             }
         });
     }

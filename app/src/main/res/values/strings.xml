@@ -6,4 +6,14 @@
     <string name="action_settings">Options</string>
     <string name="call">Call</string>
     <string name="answer">Answer</string>
+    <string name="title_activity_home">HomeActivity</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="audio_only">Audio Only</string>
+    <string name="audio_and_video">Audio and Video</string>'
+    <string name="end_call">End Call</string>
+    <string name="connecting">Connecting</string>
+    <string name="connected">Connected</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="unknown">Unknown</string>
 </resources>
