@@ -94,7 +94,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
         client = new WebRtcClient(this, mSocketAddress, parameters, VideoRendererGui.getEGLContext());
         client.start("android_test");
         //configure the audio manager
-        audioManager = AppRTCAudioManager.create(this, new Runnable() {
+        /*audioManager = AppRTCAudioManager.create(this, new Runnable() {
                     @Override
                     public void run() {
                         onAudioManageStatusChanged();
@@ -102,7 +102,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
                     }
                 }
         );
-        audioManager.init();
+        audioManager.init();*/
     }
 
     @TargetApi(16)
@@ -141,12 +141,6 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     }
 
     @Override
-    public void onDestroy() {
-        disconnect();
-        super.onDestroy();
-    }
-
-    @Override
     public void onCallReady(String callId) {
         if (TASK_INIT.equals(mTask)){
             mSessionId = callId;
@@ -160,10 +154,10 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     }
 
     private void disconnect(){
-        if (audioManager != null){
+       /* if (audioManager != null){
             audioManager.close();
             audioManager = null;
-        }
+        }*/
 
         if (client != null) {
             client.onDestroy();
@@ -191,6 +185,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
                         break;
                     case WebRtcClient.STATUS.DISCONNECTED:
                         resId = R.string.disconnected;
+                        disconnect();
                         break;
                 }
                 Toast.makeText(getApplicationContext(), resId, Toast.LENGTH_SHORT).show();
