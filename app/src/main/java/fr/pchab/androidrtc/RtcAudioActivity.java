@@ -172,6 +172,10 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     }
 
     private void disconnect(){
+       /* if (audioManager != null){
+            audioManager.close();
+            audioManager = null;
+        }*/
 
         if (client != null) {
             client.onDestroy();
@@ -206,6 +210,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
                         break;
                     case WebRtcClient.STATUS.DISCONNECTED:
                         resId = R.string.disconnected;
+                        disconnect();
                         break;
                 }
                 Toast.makeText(getApplicationContext(), resId, Toast.LENGTH_SHORT).show();

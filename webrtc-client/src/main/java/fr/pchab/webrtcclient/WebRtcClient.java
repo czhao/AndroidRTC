@@ -26,7 +26,8 @@ public class WebRtcClient {
     private MediaStream localMS;
     private VideoSource videoSource;
     private RtcListener mListener;
-    private Socket client;
+    private Socket mSocket;
+    private final LooperExecutor executor;
 
     private static final String AUDIO_CODEC_PARAM_BITRATE = "maxaveragebitrate";
     private static final String AUDIO_ECHO_CANCELLATION_CONSTRAINT = "googEchoCancellation";
@@ -137,7 +138,7 @@ public class WebRtcClient {
         message.put("to", to);
         message.put("type", type);
         message.put("payload", payload);
-        client.emit("message", message);
+        mSocket.emit("message", message);
     }
 
     private class MessageHandler {
@@ -315,17 +316,18 @@ public class WebRtcClient {
         pcParams = params;
         PeerConnectionFactory.initializeAndroidGlobals(listener, true, true,
                 params.videoCodecHwAcceleration, mEGLcontext);
-        factory = new PeerConnectionFactory();
+        executor = new LooperExecutor();
+        executor.requestStart();
         MessageHandler messageHandler = new MessageHandler();
 
         try {
-            client = IO.socket(host);
+            mSocket = IO.socket(host);
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
-        client.on("id", messageHandler.onId);
-        client.on("message", messageHandler.onMessage);
-        client.connect();
+        mSocket.on("id", messageHandler.onId);
+        mSocket.on("message", messageHandler.onMessage);
+        mSocket.connect();
 
         iceServers.add(new PeerConnection.IceServer("stun:23.21.150.121"));
         iceServers.add(new PeerConnection.IceServer("stun:stun.l.google.com:19302"));
@@ -335,6 +337,13 @@ public class WebRtcClient {
             pcConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"));
         }
         pcConstraints.optional.add(new MediaConstraints.KeyValuePair("DtlsSrtpKeyAgreement", "true"));
+
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                factory = new PeerConnectionFactory();
+            }
+        });
     }
 
     /**
@@ -361,14 +370,15 @@ public class WebRtcClient {
         if (videoSource != null) {
             videoSource.stop();
         }
-
-        if (factory != null) {
-            factory.dispose();
-            factory = null;
-        }
-        client.close();
-        client.disconnect();
-        client = null;
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                factory.dispose();
+            }
+        });
+        executor.requestStop();
+        mSocket.disconnect();
+        mSocket.close();
     }
 
     private int findEndPoint() {
@@ -389,10 +399,18 @@ public class WebRtcClient {
         try {
             JSONObject message = new JSONObject();
             message.put("name", name);
-            client.emit("readyToStream", message);
+            mSocket.emit("readyToStream", message);
         } catch (JSONException e) {
             e.printStackTrace();
         }
+
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                setCamera();
+            }
+        });
+
     }
 
     private void configOutput(){
