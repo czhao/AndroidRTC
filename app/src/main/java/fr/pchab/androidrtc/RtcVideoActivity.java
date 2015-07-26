@@ -133,7 +133,7 @@ public class RtcVideoActivity extends Activity implements WebRtcClient.RtcListen
         Point displaySize = new Point();
         getWindowManager().getDefaultDisplay().getSize(displaySize);
         PeerConnectionParameters params = new PeerConnectionParameters(
-                VIDEO_ENABLED, false, displaySize.x, displaySize.y, 30, 1, VIDEO_CODEC_VP9, true, 1, AUDIO_CODEC_OPUS, true);
+                VIDEO_ENABLED, false, displaySize.x, displaySize.y, 30, 1, VIDEO_CODEC_VP9, true, 1, AUDIO_CODEC_OPUS, false, true);
         client = new WebRtcClient(this, mSocketAddress, params, VideoRendererGui.getEGLContext());
     }
 

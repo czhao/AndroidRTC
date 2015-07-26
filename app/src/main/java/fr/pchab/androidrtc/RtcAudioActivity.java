@@ -8,6 +8,7 @@ import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.NfcEvent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager.LayoutParams;
@@ -18,6 +19,7 @@ import org.webrtc.MediaStream;
 import org.webrtc.VideoRendererGui;
 
 import fr.pchab.webrtcclient.AppRTCAudioManager;
+import fr.pchab.webrtcclient.AppRTCUtils;
 import fr.pchab.webrtcclient.PeerConnectionParameters;
 import fr.pchab.webrtcclient.WebRtcClient;
 
@@ -42,6 +44,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d("audio_activity", "onCreate");
         getWindow().addFlags(
                 LayoutParams.FLAG_KEEP_SCREEN_ON
                         | LayoutParams.FLAG_DISMISS_KEYGUARD
@@ -73,6 +76,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
                 //output the caller ID
                 Toast.makeText(RtcAudioActivity.this,"Session End "+ mSessionId, Toast.LENGTH_SHORT).show();
                 disconnect();
+                setResult(Activity.RESULT_OK);
                 finish();
             }
         });
@@ -90,19 +94,21 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     }
 
     private void init() {
-        PeerConnectionParameters parameters = new PeerConnectionParameters(false, false, 0, 0, 30, 1, VIDEO_CODEC_VP9, false, 1, AUDIO_CODEC_OPUS, true);
+        Log.d("audio_activity","init");
+        PeerConnectionParameters parameters = new PeerConnectionParameters(false, false,
+                0, 0, 30, 1, VIDEO_CODEC_VP9, false,
+                32, AppRTCUtils.AUDIO_CODEC_ISAC, false, true);
         client = new WebRtcClient(this, mSocketAddress, parameters, VideoRendererGui.getEGLContext());
         client.start("android_test");
         //configure the audio manager
-        audioManager = AppRTCAudioManager.create(this, new Runnable() {
+        /*audioManager = AppRTCAudioManager.create(this, new Runnable() {
                     @Override
                     public void run() {
                         onAudioManageStatusChanged();
-
                     }
                 }
         );
-        audioManager.init();
+        audioManager.init();*/
     }
 
     @TargetApi(16)
@@ -120,6 +126,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     @Override
     public void onPause() {
         super.onPause();
+        Log.d("audio_activity","onPause");
         if(client != null) {
             client.onPause();
         }
@@ -134,15 +141,20 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     @Override
     public void onResume() {
         super.onResume();
-
+        Log.d("audio_activity","onResume");
         if(client != null) {
             client.onResume();
         }
     }
 
     @Override
-    public void onDestroy() {
+    public void onBackPressed() {
         disconnect();
+        super.onBackPressed();
+    }
+
+    @Override
+    public void onDestroy() {
         super.onDestroy();
     }
 
@@ -160,15 +172,18 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     }
 
     private void disconnect(){
-        if (audioManager != null){
-            audioManager.close();
-            audioManager = null;
-        }
 
         if (client != null) {
             client.onDestroy();
             client = null;
         }
+
+        if (audioManager != null){
+            audioManager.close();
+            audioManager = null;
+        }
+
+        Log.d("audio_activity","disconnect");
     }
 
     public void answer(String callerId) throws JSONException {

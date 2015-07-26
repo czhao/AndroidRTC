@@ -28,6 +28,12 @@ public class WebRtcClient {
     private RtcListener mListener;
     private Socket client;
 
+    private static final String AUDIO_CODEC_PARAM_BITRATE = "maxaveragebitrate";
+    private static final String AUDIO_ECHO_CANCELLATION_CONSTRAINT = "googEchoCancellation";
+    private static final String AUDIO_AUTO_GAIN_CONTROL_CONSTRAINT= "googAutoGainControl";
+    private static final String AUDIO_HIGH_PASS_FILTER_CONSTRAINT  = "googHighpassFilter";
+    private static final String AUDIO_NOISE_SUPPRESSION_CONSTRAINT = "googNoiseSuppression";
+
     public interface STATUS {
         int NONE = 0;
         int CONNECTING = 1;
@@ -64,13 +70,13 @@ public class WebRtcClient {
 
     private class CreateAnswerCommand implements Command{
         public void execute(String peerId, JSONObject payload) throws JSONException {
-            Log.d(TAG,"CreateAnswerCommand");
+            Log.d(TAG, "CreateAnswerCommand");
             Peer peer = peers.get(peerId);
             SessionDescription sdp = new SessionDescription(
                     SessionDescription.Type.fromCanonicalForm(payload.getString("type")),
                     payload.getString("sdp")
             );
-            peer.pc.setRemoteDescription(peer, sdp);
+            peer.pc.setRemoteDescription(peer, overrideRemoteDescription(sdp));
             peer.pc.createAnswer(peer, pcConstraints);
         }
     }
@@ -83,8 +89,24 @@ public class WebRtcClient {
                     SessionDescription.Type.fromCanonicalForm(payload.getString("type")),
                     payload.getString("sdp")
             );
-            peer.pc.setRemoteDescription(peer, sdp);
+            peer.pc.setRemoteDescription(peer, overrideRemoteDescription(sdp));
         }
+    }
+
+    private SessionDescription overrideRemoteDescription(SessionDescription sdp){
+        String sdpDescription = sdp.description;
+
+        //support audio configuration only
+        if (pcParams.audioStartBitrate > 0){
+            sdpDescription = AppRTCUtils.setStartBitrate(AppRTCUtils.AUDIO_CODEC_OPUS, false, sdpDescription, pcParams.audioStartBitrate);
+        }
+
+        if (pcParams.audioCodec.equals(AppRTCUtils.AUDIO_CODEC_ISAC)){
+            sdpDescription = AppRTCUtils.preferCodec(sdpDescription,AppRTCUtils.AUDIO_CODEC_ISAC, true);
+        }
+        return new SessionDescription(
+                sdp.type, sdpDescription);
+
     }
 
     private class AddIceCandidateCommand implements Command{
@@ -140,6 +162,9 @@ public class WebRtcClient {
                     if(!type.equals("init")) {
                         payload = data.getJSONObject("payload");
                     }
+
+                    Log.e("test","onMessage from:"+from+" type:" +type);
+
                     // if peer is unknown, try to add him
                     if(!peers.containsKey(from)) {
                         // if MAX_PEER is reach, ignore the call
@@ -173,10 +198,22 @@ public class WebRtcClient {
         private int endPoint;
 
         @Override
-        public void onCreateSuccess(final SessionDescription sdp) {
-            // TODO: modify sdp to use pcParams prefered codecs
+        public void onCreateSuccess(final SessionDescription origSdp) {
             try {
                 JSONObject payload = new JSONObject();
+
+                String sdpDescription = origSdp.description;
+
+                //modify sdp to use pcParams preferred codecs
+                /*if (preferIsac) {
+                    sdpDescription = preferCodec(sdpDescription, AUDIO_CODEC_ISAC, true);
+                }
+                if (videoCallEnabled && preferH264) {
+                    sdpDescription = preferCodec(sdpDescription, VIDEO_CODEC_H264, false);
+                }*/
+                final SessionDescription sdp = new SessionDescription(
+                        origSdp.type, sdpDescription);
+
                 payload.put("type", sdp.type.canonicalForm());
                 payload.put("sdp", sdp.description);
                 sendMessage(id, sdp.type.canonicalForm(), payload);
@@ -324,9 +361,14 @@ public class WebRtcClient {
         if (videoSource != null) {
             videoSource.stop();
         }
-        factory.dispose();
-        client.disconnect();
+
+        if (factory != null) {
+            factory.dispose();
+            factory = null;
+        }
         client.close();
+        client.disconnect();
+        client = null;
     }
 
     private int findEndPoint() {
@@ -343,7 +385,7 @@ public class WebRtcClient {
      * @param name client name
      */
     public void start(String name){
-        setCamera();
+        configOutput();
         try {
             JSONObject message = new JSONObject();
             message.put("name", name);
@@ -353,7 +395,7 @@ public class WebRtcClient {
         }
     }
 
-    private void setCamera(){
+    private void configOutput(){
         localMS = factory.createLocalMediaStream("ARDAMS");
         if(pcParams.videoCallEnabled){
             MediaConstraints videoConstraints = new MediaConstraints();
@@ -366,7 +408,21 @@ public class WebRtcClient {
             localMS.addTrack(factory.createVideoTrack("ARDAMSv0", videoSource));
         }
 
-        AudioSource audioSource = factory.createAudioSource(new MediaConstraints());
+        MediaConstraints audioConstraints = new MediaConstraints();
+
+        if (pcParams.noAudioProcessing) {
+            Log.d(TAG, "Disabling audio processing");
+            audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
+                    AUDIO_ECHO_CANCELLATION_CONSTRAINT, "false"));
+            audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
+                    AUDIO_AUTO_GAIN_CONTROL_CONSTRAINT, "false"));
+            audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
+                    AUDIO_HIGH_PASS_FILTER_CONSTRAINT, "false"));
+            audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
+                    AUDIO_NOISE_SUPPRESSION_CONSTRAINT , "false"));
+        }
+
+        AudioSource audioSource = factory.createAudioSource(audioConstraints);
         localMS.addTrack(factory.createAudioTrack("ARDAMSa0", audioSource));
 
         mListener.onLocalStream(localMS);

@@ -140,16 +140,18 @@ public class AppRTCAudioManager {
         // Register receiver for broadcast intents related to adding/removing a
         // wired headset (Intent.ACTION_HEADSET_PLUG).
         registerForWiredHeadsetIntentBroadcast();
+        Log.d("audio_activity", "register_ib");
 
         initialized = true;
     }
 
     public void close() {
-        Log.d(TAG, "close");
+        Log.d("audio_activity", "close");
         if (!initialized) {
             return;
         }
 
+        Log.d("audio_activity", "unregister_ib");
         unregisterForWiredHeadsetIntentBroadcast();
 
         // Restore previously stored audio states.
