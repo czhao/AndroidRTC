@@ -19,7 +19,7 @@ public class WebRtcClient {
     private final static int MAX_PEER = 2;
     private boolean[] endPoints = new boolean[MAX_PEER];
     private PeerConnectionFactory factory;
-    private HashMap<String, Peer> peers = new HashMap<>();
+    private Peer mPeer;
     private LinkedList<PeerConnection.IceServer> iceServers = new LinkedList<>();
     private PeerConnectionParameters pcParams;
     private MediaConstraints pcConstraints = new MediaConstraints();
@@ -27,7 +27,7 @@ public class WebRtcClient {
     private VideoSource videoSource;
     private RtcListener mListener;
     private Socket mSocket;
-    private final LooperExecutor executor;
+    private LooperExecutor executor;
 
     private static final String AUDIO_CODEC_PARAM_BITRATE = "maxaveragebitrate";
     private static final String AUDIO_ECHO_CANCELLATION_CONSTRAINT = "googEchoCancellation";
@@ -64,33 +64,30 @@ public class WebRtcClient {
     private class CreateOfferCommand implements Command{
         public void execute(String peerId, JSONObject payload) throws JSONException {
             Log.d(TAG,"CreateOfferCommand");
-            Peer peer = peers.get(peerId);
-            peer.pc.createOffer(peer, pcConstraints);
+            mPeer.pc.createOffer(mPeer, pcConstraints);
         }
     }
 
     private class CreateAnswerCommand implements Command{
         public void execute(String peerId, JSONObject payload) throws JSONException {
             Log.d(TAG, "CreateAnswerCommand");
-            Peer peer = peers.get(peerId);
             SessionDescription sdp = new SessionDescription(
                     SessionDescription.Type.fromCanonicalForm(payload.getString("type")),
                     payload.getString("sdp")
             );
-            peer.pc.setRemoteDescription(peer, overrideRemoteDescription(sdp));
-            peer.pc.createAnswer(peer, pcConstraints);
+            mPeer.pc.setRemoteDescription(mPeer, overrideRemoteDescription(sdp));
+            mPeer.pc.createAnswer(mPeer, pcConstraints);
         }
     }
 
     private class SetRemoteSDPCommand implements Command{
         public void execute(String peerId, JSONObject payload) throws JSONException {
             Log.d(TAG,"SetRemoteSDPCommand");
-            Peer peer = peers.get(peerId);
             SessionDescription sdp = new SessionDescription(
                     SessionDescription.Type.fromCanonicalForm(payload.getString("type")),
                     payload.getString("sdp")
             );
-            peer.pc.setRemoteDescription(peer, overrideRemoteDescription(sdp));
+            mPeer.pc.setRemoteDescription(mPeer, overrideRemoteDescription(sdp));
         }
     }
 
@@ -113,14 +110,13 @@ public class WebRtcClient {
     private class AddIceCandidateCommand implements Command{
         public void execute(String peerId, JSONObject payload) throws JSONException {
             Log.d(TAG,"AddIceCandidateCommand");
-            PeerConnection pc = peers.get(peerId).pc;
-            if (pc.getRemoteDescription() != null) {
+            if (mPeer.pc.getRemoteDescription() != null) {
                 IceCandidate candidate = new IceCandidate(
                         payload.getString("id"),
                         payload.getInt("label"),
                         payload.getString("candidate")
                 );
-                pc.addIceCandidate(candidate);
+                mPeer.pc.addIceCandidate(candidate);
             }
         }
     }
@@ -157,27 +153,31 @@ public class WebRtcClient {
             public void call(Object... args) {
                 JSONObject data = (JSONObject) args[0];
                 try {
-                    String from = data.getString("from");
-                    String type = data.getString("type");
-                    JSONObject payload = null;
+                    final String from = data.getString("from");
+                    final String type = data.getString("type");
+                    final JSONObject payload;
                     if(!type.equals("init")) {
                         payload = data.getJSONObject("payload");
+                    }else{
+                        payload = null;
                     }
-
                     Log.e("test","onMessage from:"+from+" type:" +type);
-
-                    // if peer is unknown, try to add him
-                    if(!peers.containsKey(from)) {
-                        // if MAX_PEER is reach, ignore the call
-                        int endPoint = findEndPoint();
-                        if(endPoint != MAX_PEER) {
-                            Peer peer = addPeer(from, endPoint);
-                            peer.pc.addStream(localMS);
-                            commandMap.get(type).execute(from, payload);
+                    executor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            //check if we have a known peer
+                            if (mPeer == null) {
+                                //TODO use the end point to identify each user
+                                Peer peer = addPeer(from, 0);
+                                peer.pc.addStream(localMS);
+                            }
+                            try {
+                                commandMap.get(type).execute(from, payload);
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
                         }
-                    } else {
-                        commandMap.get(type).execute(from, payload);
-                    }
+                    });
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -212,13 +212,22 @@ public class WebRtcClient {
                 if (videoCallEnabled && preferH264) {
                     sdpDescription = preferCodec(sdpDescription, VIDEO_CODEC_H264, false);
                 }*/
+
+
+
+
                 final SessionDescription sdp = new SessionDescription(
                         origSdp.type, sdpDescription);
 
                 payload.put("type", sdp.type.canonicalForm());
                 payload.put("sdp", sdp.description);
                 sendMessage(id, sdp.type.canonicalForm(), payload);
-                pc.setLocalDescription(Peer.this, sdp);
+                executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        pc.setLocalDescription(Peer.this, sdp);
+                    }
+                });
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -239,7 +248,7 @@ public class WebRtcClient {
         @Override
         public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
             if(iceConnectionState == PeerConnection.IceConnectionState.DISCONNECTED) {
-                removePeer(id);
+                onDestroy();
                 mListener.onStatusChanged(STATUS.DISCONNECTED);
             } else if (iceConnectionState == PeerConnection.IceConnectionState.CONNECTED){
                 mListener.onStatusChanged(STATUS.CONNECTED);
@@ -297,18 +306,22 @@ public class WebRtcClient {
 
     private Peer addPeer(String id, int endPoint) {
         Peer peer = new Peer(id, endPoint);
-        peers.put(id, peer);
-
-        endPoints[endPoint] = true;
+        mPeer = peer;
         return peer;
     }
 
-    private void removePeer(String id) {
-        Peer peer = peers.get(id);
-        mListener.onRemoveRemoteStream(peer.endPoint);
-        peer.pc.close();
-        peers.remove(peer.id);
-        endPoints[peer.endPoint] = false;
+    private void removePeer(final String id) {
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                if (mPeer != null && mPeer.id.equals(id)) {
+                    mPeer.pc.close();
+                    mPeer = null;
+                }
+            }
+        });
+
+        //endPoints[mPeer.endPoint] = false;
     }
 
     public WebRtcClient(RtcListener listener, String host, PeerConnectionParameters params, EGLContext mEGLcontext) {
@@ -364,26 +377,26 @@ public class WebRtcClient {
      * Call this method in Activity.onDestroy()
      */
     public void onDestroy() {
-        for (Peer peer : peers.values()) {
-            peer.pc.dispose();
-        }
-        if (videoSource != null) {
-            videoSource.stop();
-        }
+
         executor.execute(new Runnable() {
             @Override
             public void run() {
+
+                if (videoSource != null) {
+                    videoSource.stop();
+                }
+
+                if (mPeer != null && mPeer.pc != null) {
+                    mPeer.pc.dispose();
+                    mPeer.pc = null;
+                }
+
                 factory.dispose();
             }
         });
         executor.requestStop();
         mSocket.disconnect();
         mSocket.close();
-    }
-
-    private int findEndPoint() {
-        for(int i = 0; i < MAX_PEER; i++) if (!endPoints[i]) return i;
-        return MAX_PEER;
     }
 
     /**
@@ -395,7 +408,7 @@ public class WebRtcClient {
      * @param name client name
      */
     public void start(String name){
-        configOutput();
+
         try {
             JSONObject message = new JSONObject();
             message.put("name", name);
@@ -407,7 +420,7 @@ public class WebRtcClient {
         executor.execute(new Runnable() {
             @Override
             public void run() {
-                setCamera();
+                configOutput();
             }
         });
 
@@ -437,7 +450,7 @@ public class WebRtcClient {
             audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
                     AUDIO_HIGH_PASS_FILTER_CONSTRAINT, "false"));
             audioConstraints.mandatory.add(new MediaConstraints.KeyValuePair(
-                    AUDIO_NOISE_SUPPRESSION_CONSTRAINT , "false"));
+                    AUDIO_NOISE_SUPPRESSION_CONSTRAINT, "false"));
         }
 
         AudioSource audioSource = factory.createAudioSource(audioConstraints);
