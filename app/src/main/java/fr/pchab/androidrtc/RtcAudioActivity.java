@@ -101,14 +101,14 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
         client = new WebRtcClient(this, mSocketAddress, parameters, VideoRendererGui.getEGLContext());
         client.start("android_test");
         //configure the audio manager
-        /*audioManager = AppRTCAudioManager.create(this, new Runnable() {
+        audioManager = AppRTCAudioManager.create(this, new Runnable() {
                     @Override
                     public void run() {
                         onAudioManageStatusChanged();
                     }
                 }
         );
-        audioManager.init();*/
+        audioManager.init();
     }
 
     @TargetApi(16)
