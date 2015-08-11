@@ -10,10 +10,32 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/audio_only_option"
-        android:text="@string/audio_only"
+        android:text="@string/start_new_session"
         android:layout_alignParentTop="true"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
+        android:onClick="onStartAudioSession"
+        />
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/server_host_input"
+        android:layout_below="@+id/audio_only_option"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:minWidth="100dp"
+        />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/save"
+        android:id="@+id/save_button"
+        android:layout_toRightOf="@+id/server_host_input"
+        android:layout_toEndOf="@+id/server_host_input"
+        android:layout_alignBaseline="@+id/server_host_input"
+        android:onClick="onSaveConfiguration"
         />
 
 </RelativeLayout>

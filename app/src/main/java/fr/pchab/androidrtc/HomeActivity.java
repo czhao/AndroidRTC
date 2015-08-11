@@ -1,6 +1,7 @@
 package fr.pchab.androidrtc;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.nfc.NdefMessage;
 import android.nfc.NfcAdapter;
 import android.os.Bundle;
@@ -8,23 +9,33 @@ import android.os.Parcelable;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Toast;
 
+import butterknife.Bind;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
 public class HomeActivity extends AppCompatActivity {
+
+    @Bind(R.id.server_host_input)
+    EditText mHostInput;
+
+    SharedPreferences settings;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
         ButterKnife.bind(this);
+        settings = getSharedPreferences(AppConst.SHARED_PREF_NAME, 0);
+        mHostInput.setText(settings.getString(AppConst.PREF_HOST,""));
     }
 
-    @OnClick(R.id.audio_only_option)
-    public void audioOnly(Button button) {
+
+    public void onStartAudioSession(View button) {
         //start the activity for audio only activity
         Intent answerCall = new Intent(this, AudioActivity.class);
         answerCall.putExtra(AudioActivity.INTENT_PARAM_TASK, AudioActivity.TASK_INIT);
@@ -46,6 +57,13 @@ public class HomeActivity extends AppCompatActivity {
         }
     }
 
+    public void onSaveConfiguration(View v){
+        //save the host info into the shared preference
+        String input = mHostInput.getText().toString();
+        SharedPreferences.Editor e = settings.edit();
+        e.putString(AppConst.PREF_HOST, input);
+        e.apply();
+    }
 
     /**
      * Parses the NDEF Message from the intent and prints to the TextView

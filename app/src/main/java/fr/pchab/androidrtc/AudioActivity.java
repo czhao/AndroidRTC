@@ -3,6 +3,7 @@ package fr.pchab.androidrtc;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
@@ -42,14 +43,13 @@ public class AudioActivity extends Activity implements WebRtcClient.RtcListener,
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().addFlags(
-                LayoutParams.FLAG_KEEP_SCREEN_ON
-                        | LayoutParams.FLAG_DISMISS_KEYGUARD
-                        | LayoutParams.FLAG_SHOW_WHEN_LOCKED
-                        | LayoutParams.FLAG_TURN_SCREEN_ON);
+        getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON | LayoutParams.FLAG_DISMISS_KEYGUARD |
+                        LayoutParams.FLAG_SHOW_WHEN_LOCKED | LayoutParams.FLAG_TURN_SCREEN_ON);
 
         setContentView(R.layout.audio);
-        mSocketAddress = "http://" + getResources().getString(R.string.host);
+        SharedPreferences settings = getSharedPreferences(AppConst.SHARED_PREF_NAME, 0);
+        String hostIP = settings.getString(AppConst.PREF_HOST, "");
+        mSocketAddress = "http://" + hostIP;
         mSocketAddress += (":" + getResources().getString(R.string.port) + "/");
 
         mSessionId = getIntent().getStringExtra(INTENT_PARAM_SESSION);
