@@ -8,9 +8,7 @@ import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.NfcEvent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager.LayoutParams;
 import android.widget.Toast;
 
@@ -23,7 +21,7 @@ import fr.pchab.webrtcclient.AppRTCUtils;
 import fr.pchab.webrtcclient.PeerConnectionParameters;
 import fr.pchab.webrtcclient.WebRtcClient;
 
-public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListener,NfcAdapter.CreateNdefMessageCallback{
+public class AudioActivity extends Activity implements WebRtcClient.RtcListener,NfcAdapter.CreateNdefMessageCallback{
     private static final String VIDEO_CODEC_VP9 = "VP9";
     private static final String AUDIO_CODEC_OPUS = "opus";
     // Local preview screen position before call is connected.
@@ -44,7 +42,6 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.d("audio_activity", "onCreate");
         getWindow().addFlags(
                 LayoutParams.FLAG_KEEP_SCREEN_ON
                         | LayoutParams.FLAG_DISMISS_KEYGUARD
@@ -74,7 +71,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
             @Override
             public void onClick(View view) {
                 //output the caller ID
-                Toast.makeText(RtcAudioActivity.this,"Session End "+ mSessionId, Toast.LENGTH_SHORT).show();
+                Toast.makeText(AudioActivity.this,"Session End "+ mSessionId, Toast.LENGTH_SHORT).show();
                 disconnect();
                 setResult(Activity.RESULT_OK);
                 finish();
@@ -94,7 +91,6 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     }
 
     private void init() {
-        Log.d("audio_activity","init");
         PeerConnectionParameters parameters = new PeerConnectionParameters(false, false,
                 0, 0, 30, 1, VIDEO_CODEC_VP9, false,
                 32, AppRTCUtils.AUDIO_CODEC_ISAC, false, true);
@@ -114,8 +110,9 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     @TargetApi(16)
     @Override
     public NdefMessage createNdefMessage(NfcEvent nfcEvent) {
-        if (!TASK_INIT.equals(mTask))
+        if (!TASK_INIT.equals(mTask)) {
             return null;
+        }
 
         //create the message
         return new NdefMessage(
@@ -126,8 +123,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     @Override
     public void onPause() {
         super.onPause();
-        Log.d("audio_activity","onPause");
-        if(client != null) {
+        if (client != null) {
             client.onPause();
         }
     }
@@ -141,8 +137,7 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     @Override
     public void onResume() {
         super.onResume();
-        Log.d("audio_activity","onResume");
-        if(client != null) {
+        if (client != null) {
             client.onResume();
         }
     }
@@ -172,11 +167,6 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
     }
 
     private void disconnect(){
-       /* if (audioManager != null){
-            audioManager.close();
-            audioManager = null;
-        }*/
-
         if (client != null) {
             client.onDestroy();
             client = null;
@@ -186,8 +176,6 @@ public class RtcAudioActivity extends Activity implements WebRtcClient.RtcListen
             audioManager.close();
             audioManager = null;
         }
-
-        Log.d("audio_activity","disconnect");
     }
 
     public void answer(String callerId) throws JSONException {

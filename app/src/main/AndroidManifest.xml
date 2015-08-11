@@ -60,7 +60,7 @@
 
         </activity>
 
-        <activity android:name=".RtcAudioActivity"
+        <activity android:name=".AudioActivity"
             android:launchMode="singleTop"
             android:screenOrientation="portrait"
             />

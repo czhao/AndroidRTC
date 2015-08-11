@@ -26,8 +26,8 @@ public class HomeActivity extends AppCompatActivity {
     @OnClick(R.id.audio_only_option)
     public void audioOnly(Button button) {
         //start the activity for audio only activity
-        Intent answerCall = new Intent(this, RtcAudioActivity.class);
-        answerCall.putExtra(RtcAudioActivity.INTENT_PARAM_TASK, RtcAudioActivity.TASK_INIT);
+        Intent answerCall = new Intent(this, AudioActivity.class);
+        answerCall.putExtra(AudioActivity.INTENT_PARAM_TASK, AudioActivity.TASK_INIT);
         startActivity(answerCall);
     }
 
@@ -60,16 +60,16 @@ public class HomeActivity extends AppCompatActivity {
         Toast.makeText(this, "New Session Acquired: " +mCallSessionId, Toast.LENGTH_SHORT).show();
 
         //start the new activity
-        Intent answerCall = new Intent(this, RtcAudioActivity.class);
-        answerCall.putExtra(RtcAudioActivity.INTENT_PARAM_TASK, RtcAudioActivity.TASK_ANSWER);
-        answerCall.putExtra(RtcAudioActivity.INTENT_PARAM_SESSION, mCallSessionId);
-        startActivityForResult(answerCall, RtcAudioActivity.REQUEST_CODE);
+        Intent answerCall = new Intent(this, AudioActivity.class);
+        answerCall.putExtra(AudioActivity.INTENT_PARAM_TASK, AudioActivity.TASK_ANSWER);
+        answerCall.putExtra(AudioActivity.INTENT_PARAM_SESSION, mCallSessionId);
+        startActivityForResult(answerCall, AudioActivity.REQUEST_CODE);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == RtcAudioActivity.REQUEST_CODE){
+        if (requestCode == AudioActivity.REQUEST_CODE){
             //remove the intent set via NFC beam
             setIntent(new Intent());
         }
