@@ -246,6 +246,11 @@ public class WebRtcClient {
         public void onSignalingChange(PeerConnection.SignalingState signalingState) {}
 
         @Override
+        public void onIceConnectionReceivingChange(boolean b) {
+            //TODO provide implementation for this new API
+        }
+
+        @Override
         public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
             if(iceConnectionState == PeerConnection.IceConnectionState.DISCONNECTED) {
                 onDestroy();
